@@ -247,7 +247,7 @@ class DotPatternPainter extends CustomPainter {
 
     for (double x = 0; x < size.width; x += spacing) {
       for (double y = 0; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), dotSize / 2, paint);
+        canvas.drawCircle(Offset(x, y), dotSize, paint);
       }
     }
   }
