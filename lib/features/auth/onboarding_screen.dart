@@ -278,18 +278,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           
           // Confetti overlay
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
+          Positioned.fill(
             child: ConfettiWidget(
               confettiController: _confettiController,
-              blastDirection: 1.57, // radians - 90 degrees
-              emissionFrequency: 0.05,
-              numberOfParticles: 50,
-              maxBlastForce: 100,
-              minBlastForce: 80,
-              gravity: 0.3,
+              blastDirection: -1.57, // radians - upward direction
+              emissionFrequency: 0.1,
+              numberOfParticles: 30,
+              maxBlastForce: 50,
+              minBlastForce: 20,
+              gravity: 0.2,
+              shouldLoop: false,
+              blastDirectionality: BlastDirectionality.explosive,
               colors: const [
                 Colors.green,
                 Colors.blue,

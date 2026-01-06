@@ -5,7 +5,7 @@ import 'shared/models/models.dart';
 import 'shared/providers/app_state_provider.dart';
 import 'shared/widgets/bottom_nav_bar.dart';
 import 'features/auth/splash_screen.dart';
-import 'features/auth/onboarding_screen.dart';
+import 'features/auth/auth_wrapper.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/projects/projects_screen.dart';
 import 'features/collect/collect_screen.dart';
@@ -47,8 +47,6 @@ class _AppContentState extends ConsumerState<AppContent> {
 
   @override
   Widget build(BuildContext context) {
-    final appState = ref.watch(appStateProvider);
-
     if (_showSplash) {
       return SplashScreen(
         onComplete: () {
@@ -59,13 +57,18 @@ class _AppContentState extends ConsumerState<AppContent> {
       );
     }
 
-    if (!appState.isOnboarded) {
-      return OnboardingScreen(
-        onComplete: () {
-          ref.read(appStateProvider.notifier).setIsOnboarded(true);
-        },
-      );
-    }
+    return AuthWrapper(
+      authenticatedApp: const MainApp(),
+    );
+  }
+}
+
+class MainApp extends ConsumerWidget {
+  const MainApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appState = ref.watch(appStateProvider);
 
     return Scaffold(
       body: Stack(

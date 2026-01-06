@@ -62,14 +62,14 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Back button
-                IconButton(
-                  onPressed: widget.onNavigateToLogin,
-                  icon: const Icon(Icons.arrow_back),
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.centerLeft,
-                ),
+                // IconButton(
+                //   onPressed: widget.onNavigateToLogin,
+                //   icon: const Icon(Icons.arrow_back),
+                //   padding: EdgeInsets.zero,
+                //   alignment: Alignment.centerLeft,
+                // ),
                 
-                const SizedBox(height: 20),
+                // const SizedBox(height: 20),
                 
                 // Logo and title
                 Center(
@@ -381,6 +381,45 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                                 ),
                         ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Social signup buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {},
+                              icon: const Icon(Icons.g_mobiledata, size: 20, color: Colors.red),
+                              label: const Text('Google'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.black,
+                                side: const BorderSide(color: AppTheme.borderColor),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {},
+                              icon: const Icon(Icons.apple, size: 20),
+                              label: const Text('Apple'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.black,
+                                side: const BorderSide(color: AppTheme.borderColor),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       
                       const SizedBox(height: 24),
