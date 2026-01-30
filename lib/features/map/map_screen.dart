@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../shared/models/models.dart';
 import '../../shared/providers/app_state_provider.dart';
+import '../../shared/providers/map_settings_provider.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../core/theme/app_theme.dart';
+import 'map_settings_panel.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -13,275 +17,231 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  final _tokenController = TextEditingController();
-  String _mapboxToken = '';
-  bool _showTokenInput = true;
+  GoogleMapController? _mapController;
+  Position? _currentPosition;
+  Set<Marker> _markers = {};
 
   @override
   void initState() {
     super.initState();
-    // In a real app, you'd load this from SharedPreferences
-    _mapboxToken = '';
-    _showTokenInput = _mapboxToken.isEmpty;
+    _getCurrentLocation();
   }
 
-  @override
-  void dispose() {
-    _tokenController.dispose();
-    super.dispose();
-  }
-
-  void _saveToken() {
-    if (_tokenController.text.startsWith('pk.')) {
-      setState(() {
-        _mapboxToken = _tokenController.text;
-        _showTokenInput = false;
-      });
-      // In a real app, you'd save this to SharedPreferences
+  Future<void> _getCurrentLocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+        });
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            15.0,
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle error silently
     }
   }
 
-  Color _getMarkerColor(FixType fixType) {
+  void _centerOnUser() {
+    if (_currentPosition != null && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          16.0,
+        ),
+      );
+    }
+  }
+
+  void _updateMarkers() {
+    final state = ref.read(appStateProvider);
+    final mapSettings = ref.read(mapSettingsProvider);
+    final markers = <Marker>{};
+
+    // Current location marker
+    if (mapSettings.showCurrentLocation && _currentPosition != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('current_location'),
+          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: const InfoWindow(title: 'Current Location'),
+        ),
+      );
+    }
+
+    // Survey points markers
+    if (mapSettings.showSurveyPoints) {
+      for (final point in state.points) {
+        markers.add(
+          Marker(
+            markerId: MarkerId(point.id),
+            position: LatLng(point.latitude, point.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(_getMarkerHue(point.fixType)),
+            infoWindow: InfoWindow(
+              title: point.pointId,
+              snippet: 'Accuracy: ${point.accuracy.toStringAsFixed(1)}m',
+            ),
+            onTap: () => _showPointDetails(point),
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _markers = markers;
+    });
+  }
+
+  double _getMarkerHue(FixType fixType) {
     switch (fixType) {
       case FixType.good:
-        return AppTheme.successColor;
+        return BitmapDescriptor.hueGreen;
       case FixType.fair:
-        return AppTheme.warningColor;
+        return BitmapDescriptor.hueOrange;
       case FixType.poor:
-        return AppTheme.destructiveColor;
+        return BitmapDescriptor.hueRed;
     }
+  }
+
+  void _showPointDetails(SurveyPoint point) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Point ${point.pointId}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text('Latitude: ${point.latitude.toStringAsFixed(6)}'),
+            Text('Longitude: ${point.longitude.toStringAsFixed(6)}'),
+            Text('Elevation: ${point.elevation.toStringAsFixed(2)}m'),
+            Text('Accuracy: ${point.accuracy.toStringAsFixed(1)}m'),
+            Text('Fix Type: ${point.fixType.name}'),
+            if (point.description.isNotEmpty) Text('Description: ${point.description}'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMapSettings(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => const MapSettingsPanel(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
+    final mapSettings = ref.watch(mapSettingsProvider);
     final projectPoints = state.points
         .where((p) => p.projectId == state.activeProject?.id)
         .toList();
 
+    // Update markers when state changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateMarkers();
+    });
+
     return Scaffold(
-      body: Column(
-        children: [
-          AppHeader(
-            title: 'Map View',
-            subtitle: state.activeProject?.name ?? 'Select a project',
+      appBar: AppHeader(
+        title: 'Map View',
+        subtitle: state.activeProject?.name ?? 'Select a project',
+        action: IconButton(
+          onPressed: () => _showMapSettings(context),
+          icon: const Icon(Icons.tune),
+          style: IconButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
           ),
-          Expanded(
-            child: _showTokenInput
-                ? _buildTokenSetup()
-                : _buildMapView(projectPoints),
-          ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildTokenSetup() {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
+          GoogleMap(
+            onMapCreated: (GoogleMapController controller) {
+              _mapController = controller;
+              _updateMarkers();
+            },
+            initialCameraPosition: CameraPosition(
+              target: _currentPosition != null
+                  ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                  : const LatLng(6.5244, 3.3792),
+              zoom: mapSettings.zoom,
             ),
-            child: const Icon(
-              Icons.key,
-              size: 32,
-              color: AppTheme.primaryColor,
-            ),
+            markers: _markers,
+            myLocationEnabled: mapSettings.showCurrentLocation,
+            myLocationButtonEnabled: false,
+            mapType: mapSettings.getGoogleMapType(),
+            zoomControlsEnabled: false,
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Mapbox Token Required',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+          
+          // My Location Button
+          Positioned(
+            top: 16,
+            right: 16,
+            child: _buildMapControl(Icons.my_location, _centerOnUser),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Enter your Mapbox public token to display the map. Get one free at mapbox.com',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.mutedColor,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          TextField(
-            controller: _tokenController,
-            decoration: InputDecoration(
-              hintText: 'pk.eyJ1IjoieW91ci...',
-              border: OutlineInputBorder(
+          
+          // Points Count
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppTheme.borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppTheme.borderColor),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${projectPoints.length}/${state.points.length} points',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppTheme.primaryColor),
-              ),
-            ),
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _tokenController.text.startsWith('pk.') ? _saveToken : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Save Token'),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMapView(List<SurveyPoint> projectPoints) {
-    return Stack(
-      children: [
-        // Map placeholder
-        Container(
-          color: AppTheme.mutedColor.withOpacity(0.1),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.map_outlined,
-                  size: 64,
-                  color: AppTheme.mutedColor,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Interactive Map',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.mutedColor,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Map integration requires additional setup',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.mutedColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // Map Controls
-        Positioned(
-          top: 16,
-          right: 16,
-          child: Column(
-            children: [
-              _buildMapControl(Icons.layers, () {}),
-              const SizedBox(height: 8),
-              _buildMapControl(Icons.my_location, () {}),
-            ],
-          ),
-        ),
-        
-        // Legend
-        Positioned(
-          top: 16,
-          left: 16,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.cardColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildLegendItem('Good (≤3cm)', AppTheme.successColor),
-                const SizedBox(height: 8),
-                _buildLegendItem('Fair (3-8cm)', AppTheme.warningColor),
-                const SizedBox(height: 8),
-                _buildLegendItem('Poor (>8cm)', AppTheme.destructiveColor),
-              ],
-            ),
-          ),
-        ),
-        
-        // Points Count
-        Positioned(
-          bottom: 16,
-          left: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.cardColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: AppTheme.primaryColor,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${projectPoints.length} points',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
   Widget _buildMapControl(IconData icon, VoidCallback onPressed) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.borderColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -292,39 +252,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(
-          icon,
-          size: 16,
-          color: AppTheme.mutedColor,
-        ),
+        icon: Icon(icon, size: 20),
         style: IconButton.styleFrom(
           padding: const EdgeInsets.all(8),
         ),
       ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppTheme.mutedColor,
-          ),
-        ),
-      ],
     );
   }
 }

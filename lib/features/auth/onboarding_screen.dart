@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
+//import 'package:confetti/confetti.dart';
 import '../../core/theme/app_theme.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -15,7 +15,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   int currentSlide = 0;
   final PageController _pageController = PageController();
-  late ConfettiController _confettiController;
+  //late ConfettiController _confettiController;
   late AnimationController _slideAnimationController;
   late Animation<double> _slideAnimation;
 
@@ -40,7 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+   // _confettiController = ConfettiController(duration: const Duration(seconds: 2));
     _slideAnimationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -65,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _slideAnimationController.forward();
     } else {
       // Trigger confetti on completion
-      _confettiController.play();
+      //_confettiController.play();
       Future.delayed(const Duration(milliseconds: 500), () {
         widget.onComplete();
       });
@@ -277,28 +277,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
           
-          // Confetti overlay
-          Positioned.fill(
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: -1.57, // radians - upward direction
-              emissionFrequency: 0.1,
-              numberOfParticles: 30,
-              maxBlastForce: 50,
-              minBlastForce: 20,
-              gravity: 0.2,
-              shouldLoop: false,
-              blastDirectionality: BlastDirectionality.explosive,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.pink,
-                Colors.orange,
-                Colors.purple,
-                AppTheme.primaryColor,
-              ],
-            ),
-          ),
+          // // Confetti overlay
+          // Positioned.fill(
+          //   child: ConfettiWidget(
+          //     confettiController: _confettiController,
+          //     blastDirection: -1.57, // radians - upward direction
+          //     emissionFrequency: 0.1,
+          //     numberOfParticles: 30,
+          //     maxBlastForce: 50,
+          //     minBlastForce: 20,
+          //     gravity: 0.2,
+          //     shouldLoop: false,
+          //     blastDirectionality: BlastDirectionality.explosive,
+          //     colors: const [
+          //       Colors.green,
+          //       Colors.blue,
+          //       Colors.pink,
+          //       Colors.orange,
+          //       Colors.purple,
+          //       AppTheme.primaryColor,
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
@@ -307,7 +307,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void dispose() {
     _pageController.dispose();
-    _confettiController.dispose();
+   // _confettiController.dispose();
     _slideAnimationController.dispose();
     super.dispose();
   }

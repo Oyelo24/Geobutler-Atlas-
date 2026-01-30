@@ -19,58 +19,69 @@ class BottomNavBar extends ConsumerWidget {
         ),
       ),
       child: SafeArea(
-        child: Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: _navItems.map((item) {
-              final isActive = currentTab == item.tab;
-              
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    ref.read(appStateProvider.notifier).setCurrentTab(item.tab);
-                  },
-                  child: Container(
-                    height: 56,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent,
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: 20,
-                            color: isActive ? AppTheme.primaryColor : AppTheme.mutedColor,
-                          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final itemWidth = constraints.maxWidth / _navItems.length;
+            final isCompact = itemWidth < 80;
+            
+            return Container(
+              height: 64,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: _navItems.map((item) {
+                  final isActive = currentTab == item.tab;
+                  
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        ref.read(appStateProvider.notifier).setCurrentTab(item.tab);
+                      },
+                      child: Container(
+                        height: 56,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                            color: isActive ? AppTheme.primaryColor : AppTheme.mutedColor,
-                          ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent,
+                              ),
+                              child: Icon(
+                                item.icon,
+                                size: isCompact ? 18 : 20,
+                                color: isActive ? AppTheme.primaryColor : AppTheme.mutedColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Flexible(
+                              child: Text(
+                                item.label,
+                                style: TextStyle(
+                                  fontSize: isCompact ? 9 : 10,
+                                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                                  color: isActive ? AppTheme.primaryColor : AppTheme.mutedColor,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+                  );
+                }).toList(),
+              ),
+            );
+          },
         ),
       ),
     );

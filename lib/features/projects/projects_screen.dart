@@ -7,44 +7,52 @@ import '../../core/theme/app_theme.dart';
 import 'create_project_sheet.dart';
 import 'package:intl/intl.dart';
 
-class ProjectsScreen extends ConsumerWidget {
+class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProjectsScreen> createState() => _ProjectsScreenState();
+}
+
+class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load projects when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appStateProvider.notifier).loadProjects();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(appStateProvider);
     final notifier = ref.read(appStateProvider.notifier);
     
     return Scaffold(
-      body: Column(
-        children: [
-          AppHeader(
-            title: 'Projects',
-            subtitle: '${state.projects.length} projects',
-            action: IconButton(
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => const CreateProjectSheet(),
-                );
-              },
-              icon: const Icon(Icons.add),
-              style: IconButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.all(8),
-              ),
-            ),
+      appBar: AppHeader(
+        title: 'Projects',
+        subtitle: '${state.projects.length} projects',
+        action: IconButton(
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => const CreateProjectSheet(),
+            );
+          },
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.all(8),
           ),
-          Expanded(
-            child: state.projects.isEmpty
-                ? _buildEmptyState(context)
-                : _buildProjectsList(context, state, notifier),
-          ),
-        ],
+        ),
       ),
+      body: state.projects.isEmpty
+          ? _buildEmptyState(context)
+          : _buildProjectsList(context, state, notifier),
     );
   }
 
@@ -129,7 +137,11 @@ class ProjectsScreen extends ConsumerWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: GestureDetector(
-            onTap: () => notifier.setActiveProject(project),
+            onTap: () {
+              notifier.setActiveProject(project);
+              // Load points for the selected project
+              notifier.loadProjectPoints(project.id);
+            },
             child: Container(
               decoration: BoxDecoration(
                 color: AppTheme.cardColor,

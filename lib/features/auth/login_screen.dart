@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
-
+import '../../core/theme/app_theme.dart'; 
+import '../../core/services/auth_service.dart';
+ 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
   final VoidCallback onNavigateToSignup;
+  final VoidCallback onNavigateToForgotPassword;
 
   const LoginScreen({
     super.key,
     required this.onLoginSuccess,
     required this.onNavigateToSignup,
+    required this.onNavigateToForgotPassword,
   });
 
   @override
@@ -27,11 +30,39 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() => _isLoading = false);
-    widget.onLoginSuccess();
+    try {
+      await AuthService.signin(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      
+      setState(() => _isLoading = false);
+      widget.onLoginSuccess();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        String errorMessage = 'Login failed';
+        
+        if (e.toString().contains('invalid credentials') || e.toString().contains('Invalid')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (e.toString().contains('User not found')) {
+          errorMessage = 'No account found with this email. Please sign up first.';
+        } else if (e.toString().contains('connection')) {
+          errorMessage = 'Connection error. Please check your internet.';
+        } else {
+          errorMessage = 'Login failed: ${e.toString()}';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppTheme.destructiveColor,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -191,9 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {
-                            // Handle forgot password
-                          },
+                          onPressed: widget.onNavigateToForgotPassword,
                           child: const Text(
                             'Forgot Password?',
                             style: TextStyle(
@@ -281,11 +310,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 32),
                       
                       // Divider
-                      Row(
+                      const Row(
                         children: [
-                          const Expanded(child: Divider(color: AppTheme.borderColor)),
+                          Expanded(child: Divider(color: AppTheme.borderColor)),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               'or',
                               style: TextStyle(
@@ -294,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          const Expanded(child: Divider(color: AppTheme.borderColor)),
+                          Expanded(child: Divider(color: AppTheme.borderColor)),
                         ],
                       ),
                       

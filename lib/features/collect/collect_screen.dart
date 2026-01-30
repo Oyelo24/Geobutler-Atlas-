@@ -37,6 +37,8 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
   }
 
   void _updatePointId() {
+    if (!mounted) return;
+    
     final state = ref.read(appStateProvider);
     if (state.activeProject != null) {
       final nextNum = state.points
@@ -47,6 +49,8 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
   }
 
   Future<void> _getCurrentLocation() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
       _error = null;
@@ -74,12 +78,16 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
+      if (!mounted) return;
+      
       setState(() {
         _currentPosition = position;
         _isLoading = false;
         _isWatching = true;
       });
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -93,7 +101,7 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
     return FixType.poor;
   }
 
-  void _savePoint() {
+  void _savePoint() async {
     final state = ref.read(appStateProvider);
     
     if (state.activeProject == null) {
@@ -129,17 +137,19 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
       timestamp: DateTime.now(),
     );
 
-    ref.read(appStateProvider.notifier).addPoint(point);
+    await ref.read(appStateProvider.notifier).addPoint(point);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${point.pointId} has been recorded'),
-        backgroundColor: AppTheme.successColor,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${point.pointId} has been recorded'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
 
-    _descriptionController.clear();
-    _updatePointId();
+      _descriptionController.clear();
+      _updatePointId();
+    }
   }
 
   @override
@@ -147,14 +157,11 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
     final state = ref.watch(appStateProvider);
     
     return Scaffold(
-      body: Column(
-        children: [
-          AppHeader(
-            title: 'Collect Point',
-            subtitle: state.activeProject?.name ?? 'No project selected',
-          ),
-          Expanded(
-            child: SingleChildScrollView(
+      appBar: AppHeader(
+        title: 'Collect Point',
+        subtitle: state.activeProject?.name ?? 'No project selected',
+      ),
+      body: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +259,7 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.gps_fixed,
                                     color: Colors.white,
                                     size: 20,
@@ -502,10 +509,7 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
+          );
   }
 
   Widget _buildGPSStatusIndicator() {

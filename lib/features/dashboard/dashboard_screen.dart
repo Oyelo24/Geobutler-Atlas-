@@ -24,18 +24,24 @@ class DashboardScreen extends ConsumerWidget {
     final accuracy = _getAccuracyStatus(todayPoints);
 
     return Scaffold(
-      body: Column(
-        children: [
-          const AppHeader(
-            title: 'Dashboard',
-            subtitle: 'Your fieldwork, handled',
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      appBar: AppHeader(
+        title: 'Welcome back',
+        subtitle: 'Your fieldwork, handled',
+      ),
+      body: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      constraints.maxWidth > 600 ? (constraints.maxWidth - 600) / 2 : 20,
+                      0,
+                      constraints.maxWidth > 600 ? (constraints.maxWidth - 600) / 2 : 20,
+                      96,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                   // Active Project Card
                   if (state.activeProject != null) ...[
                     GestureDetector(
@@ -159,26 +165,49 @@ class DashboardScreen extends ConsumerWidget {
                   ],
 
                   // Stats Grid
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.location_on_outlined,
-                          value: todayPoints.length.toString(),
-                          label: 'Points today',
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.check_circle_outline,
-                          value: accuracy.label,
-                          label: 'Accuracy',
-                          color: accuracy.color,
-                        ),
-                      ),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 400;
+                      return isNarrow
+                          ? Column(
+                              children: [
+                                _StatCard(
+                                  icon: Icons.location_on_outlined,
+                                  value: todayPoints.length.toString(),
+                                  label: 'Points today',
+                                  color: AppTheme.primaryColor,
+                                ),
+                                const SizedBox(height: 16),
+                                _StatCard(
+                                  icon: Icons.check_circle_outline,
+                                  value: accuracy.label,
+                                  label: 'Accuracy',
+                                  color: accuracy.color,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: _StatCard(
+                                    icon: Icons.location_on_outlined,
+                                    value: todayPoints.length.toString(),
+                                    label: 'Points today',
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _StatCard(
+                                    icon: Icons.check_circle_outline,
+                                    value: accuracy.label,
+                                    label: 'Accuracy',
+                                    color: accuracy.color,
+                                  ),
+                                ),
+                              ],
+                            );
+                    },
                   ),
                   
                   const SizedBox(height: 16),
@@ -298,13 +327,13 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-          ),
-        ],
-      ),
-    );
+            );
   }
 
   _AccuracyStatus _getAccuracyStatus(List<SurveyPoint> points) {
@@ -366,11 +395,15 @@ class _StatCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(
@@ -379,6 +412,8 @@ class _StatCard extends StatelessWidget {
                     fontSize: 12,
                     color: AppTheme.mutedColor,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),
